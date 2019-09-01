@@ -8,28 +8,143 @@ class App extends React.Component {
     super(props);
     this.state = {
       ansDisabled: true,
-      expression: ''
+      expression: []
+    }
+  }
+
+  isOperator = (value) => {
+    return ['+', '-', '%', '/', '*'].indexOf(value) === -1 ? false : true;
+  }
+
+  getResult = (result, operator, element) => {
+    switch (operator) {
+      case '+':
+        return parseFloat(result) + parseFloat(element)
+        break;
+      case '-':
+        return parseFloat(result) - parseFloat(element)
+        break;
+      case '*':
+        return parseFloat(result) * parseFloat(element)
+        break;
+      case '/':
+        return parseFloat(result) / parseFloat(element)
+        break;
+      case '%':
+        return (parseFloat(element) / 100) * parseFloat(result)
+        break;
+      default:
+        break;
     }
   }
 
   handleClick = (e) => {
-    e.persist()
-    switch (e.target.dataset.value) {
-      case 'C':
-        this.setState({ expression: '' })
-        break;
-      case 'DEL':
-        if (this.state.expression.length > 0) {
-          this.setState(prev => ({ expression: prev.expression.substring(0, -1) }))
+    e.persist();
+    let expression = this.state.expression;
+    let value = e.target.dataset.value;
+    let isOperator = this.isOperator(value);
+    let lastValue = expression.length > 0 ? expression[expression.length - 1] : '';
+    if (isOperator === true) {
+      if (this.state.expression.length > 0 && this.isOperator(lastValue) === false) {
+        let lastChar = lastValue[lastValue.length - 1];
+        if (lastChar === '.') {
+          lastValue += '0';
+          expression[expression.length - 1] = lastValue;
+          expression.push(value);
+          this.setState({ expression: expression, ansDisabled: true });
         }
-        break;
-      case '=':
-        this.setState({ expression: eval(this.state.expression) });
-        break;
-      default:
-        this.setState(prev => ({ expression: prev.expression + e.target.dataset.value }))
-        break;
+        else {
+          expression.push(value);
+          this.setState({ expression: expression, ansDisabled: true });
+        }
+
+      }
+
     }
+    else {
+      switch (value) {
+        case 'C':
+          this.setState({ expression: [], ansDisabled: true })
+          break;
+        case 'DEL':
+          if (this.state.expression.length > 0 && expression[expression.length - 1] !== undefined && expression[expression.length - 1] !== null) {
+            expression[expression.length - 1] = expression[expression.length - 1].slice(0, -1);
+            if (expression[expression.length - 1].length > 0) {
+              this.setState({ expression: expression, ansDisabled: true })
+            }
+            else {
+              expression.pop();
+              this.setState({ expression: expression, ansDisabled: true })
+            }
+
+          }
+          break;
+        case '=':
+          if (this.isOperator(lastValue) === false) {
+            let result = '';
+            for (let index = 0; index < expression.length; index++) {
+              if (index === 0) {
+                result = expression[index];
+              }
+              else {
+                if (this.isOperator(expression[index])) {
+                  result = this.getResult(result, expression[index], expression[index + 1]);
+                }
+              }
+            }
+            this.setState({ expression: [result.toString()], ansDisabled: false })
+          }
+          break;
+        case '.':
+          if (this.isOperator(lastValue) === true) {
+            expression.push('0.');
+            this.setState({ expression: expression, ansDisabled: true });
+          }
+          else {
+            if (expression.length > 0) {
+              if (lastValue.indexOf('.') === -1 && lastValue.length) {
+                lastValue += '.';
+                expression[expression.length - 1] = lastValue;
+                this.setState({ expression: expression, ansDisabled: true })
+              }
+              else {
+                if (lastValue.length === 0) {
+                  expression.push('0.');
+                  this.setState({ expression: expression, ansDisabled: true })
+                }
+              }
+            }
+            else {
+              expression.push('0.');
+              this.setState({ expression: expression, ansDisabled: true })
+            }
+          }
+          break;
+        case 'ANS':
+          expression[0] += parseInt(lastValue);
+          this.setState({ expression: expression });
+          break;
+        default:
+          if (expression.length > 0) {
+            if (this.isOperator(lastValue) === true) {
+              expression.push(value);
+              this.setState({ expression: expression, ansDisabled: true })
+            }
+            else {
+              lastValue += value;
+              expression[expression.length - 1] = lastValue;
+              this.setState({ expression: expression, ansDisabled: true })
+            }
+
+          }
+          else {
+            expression.push(value);
+            this.setState({ expression: expression, ansDisabled: true })
+          }
+
+      }
+    }
+
   }
   handleChange = (e) => {
 
@@ -41,7 +156,7 @@ class App extends React.Component {
           <Col xs={5} className={'mx-auto'}>
             <div className="fullHeight d-flex justify-content-center align-items-center">
               <div className={'border rounded shadow p-2'}>
-                <Input bsSize="lg" onChange={this.handleChange} value={this.state.expression} className={'text-right border'} />
+                <Input bsSize="lg" onChange={this.handleChange} value={this.state.expression.join('')} className={'text-right border'} />
                 <div className="d-flex justify-content-between width-25 mt-2">
                   <Button color='danger' onClick={this.handleClick} data-value={'C'} className={'mx-auto border'}>C</Button>
                   <Button color='white' onClick={this.handleClick} data-value={'DEL'} className={'mx-auto border'}>Del</Button>
